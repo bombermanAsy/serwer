@@ -12,10 +12,12 @@ import java.awt.Point;
 
 public class Serwer {
 
-	private final int ilosc_graczy = 2;
+	private final int ilosc_graczy = 4;
     private static final int PORT = 1306;
-    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    private final ExecutorService executor = Executors.newFixedThreadPool(8);
     private ArrayList<Players> players;
+    private ArrayList<ObjectOutputStream> outs;
+    private ArrayList<ObjectInputStream> ins;
     private static int zalogowani = 0;
     
     
@@ -26,6 +28,8 @@ public class Serwer {
     public Serwer() { 	
     	System.out.println("Serwer jedzie");
     	players = new ArrayList();
+    	outs = new ArrayList();
+    	ins = new ArrayList();
     	
     	try (ServerSocket serverSocket = new ServerSocket(PORT)) {
     		while(true) {
@@ -43,7 +47,8 @@ public class Serwer {
    
    private void makeConnection(Socket socket, int logged) {
         try {
-        	ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+        	outs.add(new ObjectOutputStream(socket.getOutputStream()));
+        	ObjectOutputStream out = outs.get(logged);
                 
             //zalogowal sie      	
             if (players.size() < ilosc_graczy) {
@@ -74,8 +79,8 @@ public class Serwer {
             else {
                	out.writeObject(0);
             } 	
-                	
-            out.close();
+            listen(socket, logged); 	
+           
         } catch (Exception e) {
             System.out.println("Wyj¹tek I/O - metoda odbierz w serwerze");
             e.printStackTrace();
@@ -88,6 +93,53 @@ public class Serwer {
             }
         }
     }
+   
+   private void listen(Socket socket, int logged) {
+	   try {
+		   ins.add(new ObjectInputStream(socket.getInputStream()));
+	   } catch (IOException e) {
+		   e.printStackTrace();
+	   }
+	   ObjectInputStream in = ins.get(logged);
+	   while (true) {
+		   try {
+			   
+			   int opt = (int) in.readObject();
+			   switch(opt) {
+			   case 1:
+				   //bomba
+				   int x = (int) in.readObject();
+				   int y = (int) in.readObject();
+				   plantBomb(logged, x, y);
+				   break;
+			   case 2:
+				   //ktos zginal
+				   break;
+			   }
+			   
+			   
+		   }
+		   catch (Exception e) {
+			   e.printStackTrace();
+			   break;
+		   }
+	   }
+   }
     
 
+   private void plantBomb(int logged, int x, int y) {
+	   for (int i = 0; i < outs.size(); i++) {
+		   if (i != logged) {
+			   ObjectOutputStream out = outs.get(i);
+			   try {
+				   out.writeObject(1);
+				   out.writeObject(x);
+				   out.writeObject(y);
+			   } catch (Exception e) {
+				   e.printStackTrace();
+			   }
+			   
+		   }
+	   }
+   }
 }
