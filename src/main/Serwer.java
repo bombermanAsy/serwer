@@ -34,7 +34,7 @@ public class Serwer {
     	try (ServerSocket serverSocket = new ServerSocket(PORT)) {
     		while(true) {
     			final Socket socket = serverSocket.accept();
-    			executor.submit(() -> makeConnection(socket, zalogowani));
+    			executor.submit(() -> makeConnection(socket, zalogowani++));
     		}
         } catch (IOException x) {
             System.out.println("Wyj¹tek I/O");
@@ -47,7 +47,10 @@ public class Serwer {
    
    private void makeConnection(Socket socket, int logged) {
         try {
-        	outs.add(new ObjectOutputStream(socket.getOutputStream()));
+        	synchronized (executor) {
+        		outs.add(new ObjectOutputStream(socket.getOutputStream()));
+        		ins.add(new ObjectInputStream(socket.getInputStream()));
+        	}
         	ObjectOutputStream out = outs.get(logged);
                 
             //zalogowal sie      	
@@ -58,7 +61,6 @@ public class Serwer {
                 		
                 synchronized(executor) {
                 	try {
-                		zalogowani++;
                 		while(zalogowani < ilosc_graczy) {
                 			executor.wait();
                 		}
@@ -95,11 +97,6 @@ public class Serwer {
     }
    
    private void listen(Socket socket, int logged) {
-	   try {
-		   ins.add(new ObjectInputStream(socket.getInputStream()));
-	   } catch (IOException e) {
-		   e.printStackTrace();
-	   }
 	   ObjectInputStream in = ins.get(logged);
 	   while (true) {
 		   try {
@@ -113,19 +110,29 @@ public class Serwer {
 				   plantBomb(logged, x, y);
 				   break;
 			   case 2:
-				   //ktos zginal
+				   closeAll(socket, logged);
 				   break;
 			   }
 			   
 			   
 		   }
 		   catch (Exception e) {
-			   e.printStackTrace();
+			   //e.printStackTrace();
 			   break;
 		   }
 	   }
    }
     
+   private void closeAll(Socket socket, int logged) {
+	   try {
+		   ins.get(logged).close();
+		   outs.get(logged).close();
+		   socket.close();
+	   }
+	   catch (Exception e) {
+		   e.printStackTrace();
+	   }
+   }
 
    private void plantBomb(int logged, int x, int y) {
 	   for (int i = 0; i < outs.size(); i++) {
@@ -136,7 +143,7 @@ public class Serwer {
 				   out.writeObject(x);
 				   out.writeObject(y);
 			   } catch (Exception e) {
-				   e.printStackTrace();
+				   //e.printStackTrace();
 			   }
 			   
 		   }
