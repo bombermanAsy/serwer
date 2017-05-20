@@ -8,7 +8,6 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.awt.Point;
 
 public class Serwer {
 
@@ -19,10 +18,12 @@ public class Serwer {
 	private ArrayList<ObjectOutputStream> outs;
 	private ArrayList<ObjectInputStream> ins;
 	private static int zalogowani = 0;
+	private static int pl_num = 0;
 
 	private final int[] posX = { 50, 650, 50, 650 };
 	private final int[] posY = { 50, 50, 550, 550 };
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public Serwer() {
 		System.out.println("Serwer jedzie");
 		players = new ArrayList();
@@ -30,6 +31,7 @@ public class Serwer {
 		ins = new ArrayList();
 
 		try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+			System.out.println("TCP started");
 			while (true) {
 				final Socket socket = serverSocket.accept();
 				executor.submit(() -> makeConnection(socket, zalogowani++));
@@ -39,7 +41,6 @@ public class Serwer {
 		} catch (Exception e) {
 			System.out.println("Nie uda³o siê po³¹czyæ");
 		}
-
 	}
 
 	private void makeConnection(Socket socket, int logged) {
@@ -56,6 +57,10 @@ public class Serwer {
 				out.writeObject(posX[players.size() - 1]);
 				out.writeObject(posY[players.size() - 1]);
 
+				out.writeObject(pl_num);
+				System.out.println("Player: " + pl_num + " logged");
+				pl_num++;
+				
 				synchronized (executor) {
 					try {
 						while (zalogowani < ilosc_graczy) {
@@ -78,6 +83,10 @@ public class Serwer {
 			} else {
 				out.writeObject(0);
 			}
+
+/////////////////////////////////////////////////////////////////////
+			new UDPMain(PORT).start();
+
 			listen(socket, logged);
 
 		} catch (Exception e) {
@@ -109,6 +118,14 @@ public class Serwer {
 				case 2:
 					closeAll(socket, logged);
 					break;
+
+				/*case 3: // receive position from 'who'
+					float pos_x = (float) in.readObject();
+					float pos_y = (float) in.readObject();
+					int who = (int) in.readObject();
+					move(logged, pos_x, pos_y, who);
+					break;*/
+
 				}
 
 			} catch (Exception e) {
@@ -116,6 +133,7 @@ public class Serwer {
 				break;
 			}
 		}
+
 	}
 
 	private void closeAll(Socket socket, int logged) {
@@ -140,6 +158,24 @@ public class Serwer {
 					// e.printStackTrace();
 				}
 
+			}
+		}
+	}
+
+	private void move(int logged, float pos_x, float pos_y, int who) {
+		for (int i = 0; i < outs.size(); i++) {
+			if (i != logged) { // do wszystkich oprócz tego co wys³a³
+				System.out.println(
+						"Serwer przesuwa gracza: " + who + " u: " + i + " na pozycje: " + pos_x + ", " + pos_y);
+				ObjectOutputStream out = outs.get(i);
+				try {
+					out.writeObject(3);
+					out.writeObject(pos_x);
+					out.writeObject(pos_y);
+					out.writeObject(who);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
