@@ -19,6 +19,7 @@ public class Serwer {
 	private ArrayList<ObjectInputStream> ins;
 	private static int zalogowani = 0;
 	private static int pl_num = 0;
+	private static boolean[] myNumber;
 
 	private final int[] posX = { 50, 650, 50, 650 };
 	private final int[] posY = { 50, 50, 550, 550 };
@@ -29,6 +30,11 @@ public class Serwer {
 		players = new ArrayList();
 		outs = new ArrayList();
 		ins = new ArrayList();
+		
+		myNumber = new boolean[ilosc_graczy];
+		for (int i = 0; i < myNumber.length; i++) {
+			myNumber[i] = true;
+		}
 
 		try (ServerSocket serverSocket = new ServerSocket(PORT)) {
 			System.out.println("TCP started");
@@ -54,10 +60,19 @@ public class Serwer {
 			// zalogowal sie
 			if (players.size() < ilosc_graczy) {
 				players.add(new Players(posX[players.size()], posY[players.size()]));
+				out.writeObject(100);
+				out.writeObject(pl_num);
 				out.writeObject(posX[players.size() - 1]);
 				out.writeObject(posY[players.size() - 1]);
 
-				out.writeObject(pl_num);
+				/*int pl_num = 0;
+				for (pl_num = 0; pl_num < myNumber.length; pl_num++) {
+					if (myNumber[pl_num] == true) {
+						break;
+					}
+				}*/
+				
+				
 				System.out.println("Player: " + pl_num + " logged");
 				pl_num++;
 				
@@ -75,6 +90,7 @@ public class Serwer {
 				out.writeObject(players.size() - 1);
 				for (int i = 0; i < players.size(); i++) {
 					if (i != logged) {
+						out.writeObject(i);
 						out.writeObject(players.get(i).getPos().x);
 						out.writeObject(players.get(i).getPos().y);
 					}
@@ -85,7 +101,7 @@ public class Serwer {
 			}
 
 /////////////////////////////////////////////////////////////////////
-			new UDPMain(PORT).start();
+			//new UDPMain(PORT).start();
 
 			listen(socket, logged);
 
@@ -107,29 +123,29 @@ public class Serwer {
 		while (true) {
 			try {
 
-				int opt = (int) in.readObject();
+				char opt = (char) in.readObject();
 				switch (opt) {
-				case 1:
+				case 'a':
 					// bomba
 					int x = (int) in.readObject();
 					int y = (int) in.readObject();
 					plantBomb(logged, x, y);
 					break;
-				case 2:
+				case 'b':
 					closeAll(socket, logged);
 					break;
 
-				/*case 3: // receive position from 'who'
-					float pos_x = (float) in.readObject();
-					float pos_y = (float) in.readObject();
+				case 'c': // receive position from 'who'
+					int pos_x = (int) in.readObject();
+					int pos_y = (int) in.readObject();
 					int who = (int) in.readObject();
 					move(logged, pos_x, pos_y, who);
-					break;*/
+					break;
 
 				}
 
 			} catch (Exception e) {
-				// e.printStackTrace();
+				e.printStackTrace();
 				break;
 			}
 		}
@@ -151,7 +167,7 @@ public class Serwer {
 			if (i != logged) {
 				ObjectOutputStream out = outs.get(i);
 				try {
-					out.writeObject(1);
+					out.writeObject('a');
 					out.writeObject(x);
 					out.writeObject(y);
 				} catch (Exception e) {
@@ -162,14 +178,15 @@ public class Serwer {
 		}
 	}
 
-	private void move(int logged, float pos_x, float pos_y, int who) {
+	private  synchronized  void move(int logged, int pos_x, int pos_y, int who) {
 		for (int i = 0; i < outs.size(); i++) {
 			if (i != logged) { // do wszystkich oprócz tego co wys³a³
 				System.out.println(
-						"Serwer przesuwa gracza: " + who + " u: " + i + " na pozycje: " + pos_x + ", " + pos_y);
+						"Serwer przesuwa gracza: " + who + " u: " + i + 
+						" na pozycje: " + pos_x + ", " + pos_y);
 				ObjectOutputStream out = outs.get(i);
 				try {
-					out.writeObject(3);
+					out.writeObject('c');
 					out.writeObject(pos_x);
 					out.writeObject(pos_y);
 					out.writeObject(who);
