@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 public class Serwer {
 
-	private final int ilosc_graczy = 2;
+	private final int ilosc_graczy = 3;
 	private static final int PORT = 1306;
 	private final ExecutorService executor = Executors.newFixedThreadPool(8);
 	private ArrayList<Players> players;
@@ -145,7 +145,6 @@ public class Serwer {
 				}
 
 			} catch (Exception e) {
-				e.printStackTrace();
 				break;
 			}
 		}
@@ -181,9 +180,9 @@ public class Serwer {
 	private  synchronized  void move(int logged, int pos_x, int pos_y, int who) {
 		for (int i = 0; i < outs.size(); i++) {
 			if (i != logged) { // do wszystkich oprócz tego co wys³a³
-				System.out.println(
-						"Serwer przesuwa gracza: " + who + " u: " + i + 
-						" na pozycje: " + pos_x + ", " + pos_y);
+				//System.out.println(
+				//		"Serwer przesuwa gracza: " + who + " u: " + i + 
+				//		" na pozycje: " + pos_x + ", " + pos_y);
 				ObjectOutputStream out = outs.get(i);
 				try {
 					out.writeObject('c');
@@ -191,7 +190,7 @@ public class Serwer {
 					out.writeObject(pos_y);
 					out.writeObject(who);
 				} catch (Exception e) {
-					e.printStackTrace();
+					//e.printStackTrace();
 				}
 			}
 		}
